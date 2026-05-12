@@ -134,7 +134,7 @@ def load_checkpoint(model, optimizer=None,
     if not os.path.exists(path):
         raise FileNotFoundError(f"No checkpoint found at {path}")
 
-    checkpoint = torch.load(path, map_location="cpu")
+    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
     model.load_state_dict(checkpoint["model_state"])
 
     if optimizer and "optimizer_state" in checkpoint:
@@ -159,7 +159,7 @@ def load_model(model, path: str = config.MODEL_PATH,
     """Load model weights from a .pt file."""
     if device is None:
         device = get_device()
-    model.load_state_dict(torch.load(path, map_location=device))
+    model.load_state_dict(torch.load(path, map_location=device, weights_only=False))
     model.to(device)
     model.eval()
     print(f"[Model] Loaded from {path}")

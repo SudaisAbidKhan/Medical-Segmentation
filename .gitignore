@@ -1,0 +1,51 @@
+# Dataset folders
+ai/kaggle_3m/
+ai/lgg-mri-segmentation/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Model files and uploads
+backend/uploads/
+ai/data/images/
+ai/data/mask/
+ai/saved_models/
+
+# OS
+.DS_Store
+Thumbs.db
