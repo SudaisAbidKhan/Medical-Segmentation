@@ -1,122 +1,229 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+// ═══════════════════════════════════════════════════════════
+//  App.jsx  –  Root component with routing & global state
+//
+//  Routes:
+//    /          → Home   (image upload + prediction)
+//    /about     → About  (model info + architecture)
+//
+//  Global state managed here:
+//    • serverStatus  – polling /health every 10s
+//    • modelInfo     – fetched once from /model-info
+// ═══════════════════════════════════════════════════════════
 
-function App() {
-  const [count, setCount] = useState(0)
+import { useState, useEffect, useCallback } from 'react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  NavLink,
+  useLocation,
+} from 'react-router-dom';
 
+import Home   from './pages/Home.jsx';
+import About  from './pages/About.jsx';
+import Navbar from './components/Navbar.jsx';
+import { checkHealth, getModelInfo } from './services/api.js';
+
+// ── Animated route wrapper ───────────────────────────────────
+function PageWrapper({ children }) {
+  const location = useLocation();
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <div key={location.pathname} className="slide-up" style={{ flex: 1 }}>
+      {children}
+    </div>
+  );
 }
 
-export default App
+// ── Footer ───────────────────────────────────────────────────
+function Footer() {
+  return (
+    <footer style={{
+      borderTop: '1px solid var(--border-subtle)',
+      padding: '24px 2rem',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        maxWidth: 1200,
+        margin: '0 auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+      }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11.5,
+          color: 'var(--text-muted)',
+          letterSpacing: '0.03em',
+        }}>
+          U-Net · LGG Brain MRI Segmentation · PyTorch 2.2
+        </div>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11.5,
+          color: 'var(--text-muted)',
+          letterSpacing: '0.03em',
+        }}>
+          Deep Learning Major Assignment · 2024
+        </div>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11.5,
+          color: 'var(--text-muted)',
+        }}>
+          Ronneberger et al., MICCAI 2015
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ── Offline banner ───────────────────────────────────────────
+function OfflineBanner() {
+  return (
+    <div style={{
+      background: 'rgba(251,113,133,0.08)',
+      borderBottom: '1px solid rgba(251,113,133,0.2)',
+      padding: '10px 2rem',
+      textAlign: 'center',
+      fontFamily: 'var(--font-mono)',
+      fontSize: 12.5,
+      color: 'var(--rose)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    }}>
+      <span>⚠</span>
+      Flask backend is offline — start it with{' '}
+      <code style={{
+        background: 'rgba(251,113,133,0.1)',
+        padding: '1px 8px',
+        borderRadius: 4,
+        fontSize: 11.5,
+      }}>
+        cd backend && python app.py
+      </code>
+      {' '}then refresh.
+    </div>
+  );
+}
+
+// ── Root App ─────────────────────────────────────────────────
+export default function App() {
+  const [serverStatus, setServerStatus] = useState('checking');
+  const [modelInfo,    setModelInfo]    = useState(null);
+
+  // ── Poll /health every 10 seconds ──────────────────────────
+  const pollHealth = useCallback(async () => {
+    try {
+      const data = await checkHealth();
+      setServerStatus(data.model_loaded ? 'online' : 'offline');
+    } catch {
+      setServerStatus('offline');
+    }
+  }, []);
+
+  // ── Fetch model info once ───────────────────────────────────
+  const fetchModelInfo = useCallback(async () => {
+    try {
+      const data = await getModelInfo();
+      setModelInfo(data);
+    } catch {
+      // non-fatal — About page handles missing info gracefully
+    }
+  }, []);
+
+  useEffect(() => {
+    pollHealth();
+    fetchModelInfo();
+    const id = setInterval(pollHealth, 10_000);
+    return () => clearInterval(id);
+  }, [pollHealth, fetchModelInfo]);
+
+  return (
+    <Router>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+
+        {/* Offline warning banner */}
+        {serverStatus === 'offline' && <OfflineBanner />}
+
+        {/* Top navigation */}
+        <Navbar serverStatus={serverStatus} />
+
+        {/* Page content */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <Routes>
+            <Route path="/" element={
+              <PageWrapper>
+                <Home serverStatus={serverStatus} />
+              </PageWrapper>
+            } />
+            <Route path="/about" element={
+              <PageWrapper>
+                <About modelInfo={modelInfo} serverStatus={serverStatus} />
+              </PageWrapper>
+            } />
+            {/* 404 fallback */}
+            <Route path="*" element={
+              <PageWrapper>
+                <NotFound />
+              </PageWrapper>
+            } />
+          </Routes>
+        </main>
+
+        <Footer />
+      </div>
+    </Router>
+  );
+}
+
+// ── 404 page ─────────────────────────────────────────────────
+function NotFound() {
+  return (
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '6rem 2rem',
+      gap: 16,
+      textAlign: 'center',
+    }}>
+      <div style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 80,
+        fontWeight: 300,
+        color: 'var(--border)',
+        lineHeight: 1,
+      }}>
+        404
+      </div>
+      <div style={{
+        fontFamily: 'var(--font-heading)',
+        fontSize: 22,
+        color: 'var(--text-secondary)',
+      }}>
+        Page not found
+      </div>
+      <a href="/" style={{
+        marginTop: 8,
+        padding: '9px 22px',
+        background: 'var(--accent-glow)',
+        border: '1px solid var(--accent-border)',
+        borderRadius: 'var(--radius-md)',
+        color: 'var(--accent)',
+        fontFamily: 'var(--font-body)',
+        fontSize: 14,
+        fontWeight: 500,
+      }}>
+        ← Back to Segmentation
+      </a>
+    </div>
+  );
+}
+
+// ── end of App.jsx ───────────────────────────────────────────
